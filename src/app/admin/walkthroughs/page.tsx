@@ -146,7 +146,7 @@ function normalizeProperties(properties: PropertyRow[]): AdminWalkthrough[] {
     const rooms = (property.rooms ?? [])
       .map(normalizeRoom)
       .sort((a, b) => a.sortDate.localeCompare(b.sortDate))
-      .map(({ sortDate: _sortDate, ...room }) => room);
+      .map(withoutSortDate);
 
     return {
       id: property.id,
@@ -173,6 +173,18 @@ function normalizeRoom(room: RoomRow): AdminRoom & { sortDate: string } {
     notes: room.notes,
     imageUrls: Array.isArray(room.image_urls) ? room.image_urls : [],
     sortDate: room.created_at,
+  };
+}
+
+function withoutSortDate(room: AdminRoom & { sortDate: string }): AdminRoom {
+  return {
+    id: room.id,
+    roomType: room.roomType,
+    lengthFt: room.lengthFt,
+    widthFt: room.widthFt,
+    squareFootage: room.squareFootage,
+    notes: room.notes,
+    imageUrls: room.imageUrls,
   };
 }
 
