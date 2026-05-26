@@ -13,11 +13,7 @@ import { RoomSection, type RoomAnalysisItem } from "./RoomSection";
 
 type WalkthroughSaveResponse = {
   propertyId?: string;
-  rooms?: Array<{
-    clientId?: string;
-    roomId?: string;
-    returnedRoomId?: string;
-  }>;
+  roomIds?: Record<string, string>;
   error?: string;
 };
 
@@ -31,7 +27,7 @@ export function PropertyWalkthroughForm() {
   const [propertyAddress, setPropertyAddress] = useState("");
   const [rooms, setRooms] = useState<RoomEntry[]>(() => [createEmptyRoom()]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [savedPropertyId, setSavedPropertyId] = useState("");
@@ -43,13 +39,13 @@ export function PropertyWalkthroughForm() {
   roomsRef.current = rooms;
 
   console.log("PropertyWalkthroughForm saved room state", {
-    isSubmitted,
+    isSaved,
     savedPropertyId,
     savedRoomIds,
   });
 
   const clearSavedWalkthrough = useCallback(() => {
-    setIsSubmitted(false);
+    setIsSaved(false);
     setSavedPropertyId("");
     setSavedRoomIds({});
     setRoomAnalyses({});
@@ -127,17 +123,17 @@ export function PropertyWalkthroughForm() {
         throw new Error("Unable to read saved property ID from the server.");
       }
 
-      const newSavedRoomIds = mapSavedRoomIds(data?.rooms ?? []);
-      const newSavedPropertyId = data.propertyId;
+      if (!data.roomIds) {
+        throw new Error("Unable to read saved room IDs from the server.");
+      }
 
-      setSavedPropertyId(newSavedPropertyId);
-      setSavedRoomIds(newSavedRoomIds);
-      setIsSubmitted(true);
-      console.log("PropertyWalkthroughForm save success state values", {
-        isSubmitted: true,
-        savedPropertyId: newSavedPropertyId,
-        savedRoomIds: newSavedRoomIds,
+      setSavedPropertyId(data.propertyId);
+      setSavedRoomIds(data.roomIds);
+      console.log("State updated with:", {
+        propertyId: data.propertyId,
+        roomIds: data.roomIds,
       });
+      setIsSaved(true);
       setRoomAnalyses({});
       setStatusMessage("Property walkthrough saved. You can analyze rooms now.");
     } catch (error) {
@@ -265,8 +261,8 @@ export function PropertyWalkthroughForm() {
               room={room}
               index={index}
               canRemove={rooms.length > 1}
-              isSaved={isSubmitted}
-              canAnalyze={isSubmitted}
+              isSaved={isSaved}
+              canAnalyze={isSaved}
               savedPropertyId={savedPropertyId}
               savedRoomIds={savedRoomIds}
               isAnalyzing={roomAnalyses[room.id]?.isLoading ?? false}
@@ -307,17 +303,6 @@ export function PropertyWalkthroughForm() {
       </div>
     </form>
   );
-}
-
-function mapSavedRoomIds(rooms: NonNullable<WalkthroughSaveResponse["rooms"]>) {
-  return rooms.reduce<Record<string, string>>((savedRoomIds, room) => {
-    const returnedRoomId = room.returnedRoomId ?? room.roomId;
-    if (room.clientId && returnedRoomId) {
-      savedRoomIds[room.clientId] = returnedRoomId;
-    }
-
-    return savedRoomIds;
-  }, {});
 }
 
 function parseAnalysisItems(value: unknown) {

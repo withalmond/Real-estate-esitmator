@@ -101,6 +101,7 @@ export async function POST(request: Request) {
 
     const roomRows: RoomInsert[] = [];
     const createdRooms: CreatedRoom[] = [];
+    const roomIds: Record<string, string> = {};
 
     for (const room of normalizedRooms.rooms) {
       const roomId = crypto.randomUUID();
@@ -145,6 +146,7 @@ export async function POST(request: Request) {
         image_urls: imageUrls,
       });
       createdRooms.push({ clientId: room.clientId, roomId });
+      roomIds[room.clientId] = roomId;
     }
 
     const { error: roomsError } = await supabase.from("rooms").insert(roomRows);
@@ -157,6 +159,7 @@ export async function POST(request: Request) {
         propertyId: createdPropertyId,
         roomsCreated: roomRows.length,
         rooms: createdRooms,
+        roomIds,
       },
       { status: 201 },
     );
