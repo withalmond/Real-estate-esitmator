@@ -8,8 +8,18 @@ type RoomSectionProps = {
   room: RoomEntry;
   index: number;
   canRemove: boolean;
+  canAnalyze: boolean;
+  isAnalyzing: boolean;
+  analysisItems: RoomAnalysisItem[];
+  analysisError: string;
   onChange: (room: RoomEntry) => void;
   onRemove: () => void;
+  onAnalyze: () => void;
+};
+
+export type RoomAnalysisItem = {
+  item: string;
+  quantity: string;
 };
 
 function parsePositiveNumber(value: string): number | null {
@@ -31,8 +41,13 @@ export function RoomSection({
   room,
   index,
   canRemove,
+  canAnalyze,
+  isAnalyzing,
+  analysisItems,
+  analysisError,
   onChange,
   onRemove,
+  onAnalyze,
 }: RoomSectionProps) {
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -164,6 +179,58 @@ export function RoomSection({
             Enter length and width to auto-calculate sq ft, or type sq ft directly.
           </p>
         </fieldset>
+
+        <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-900">
+                AI material estimate
+              </p>
+              <p className="mt-1 text-xs text-slate-600">
+                Save the walkthrough first, then analyze this room using its uploaded photos.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onAnalyze}
+              disabled={!canAnalyze || isAnalyzing}
+              className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-blue-300 disabled:active:scale-100"
+            >
+              {isAnalyzing ? "Analyzing..." : "Analyze Room"}
+            </button>
+          </div>
+
+          <div aria-live="polite" className="mt-3 text-sm">
+            {isAnalyzing && (
+              <p className="font-medium text-blue-700">Analyzing room...</p>
+            )}
+            {!isAnalyzing && !canAnalyze && (
+              <p className="text-slate-600">
+                Save the property walkthrough before analyzing this room.
+              </p>
+            )}
+            {!isAnalyzing && analysisError && (
+              <p className="font-medium text-red-600">{analysisError}</p>
+            )}
+            {!isAnalyzing && analysisItems.length > 0 && (
+              <ul className="mt-3 divide-y divide-blue-100 rounded-xl bg-white">
+                {analysisItems.map((analysisItem) => (
+                  <li
+                    key={`${analysisItem.item}-${analysisItem.quantity}`}
+                    className="flex items-start justify-between gap-3 px-3 py-2"
+                  >
+                    <span className="font-medium text-slate-800">
+                      {analysisItem.item}
+                    </span>
+                    <span className="text-right text-slate-600">
+                      {analysisItem.quantity}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
 
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-medium text-slate-700">
