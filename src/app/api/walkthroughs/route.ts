@@ -89,7 +89,8 @@ export async function POST(request: Request) {
       );
     }
 
-    createdPropertyId = property.id;
+    const propertyId = property.id as string;
+    createdPropertyId = propertyId;
 
     const roomRows: RoomInsert[] = [];
 
@@ -99,7 +100,7 @@ export async function POST(request: Request) {
 
       for (const file of room.photos) {
         const storagePath = buildStoragePath(
-          createdPropertyId,
+          propertyId,
           roomId,
           file,
         );
@@ -127,7 +128,7 @@ export async function POST(request: Request) {
 
       roomRows.push({
         id: roomId,
-        property_id: createdPropertyId,
+        property_id: propertyId,
         room_type: room.roomType,
         length_ft: room.lengthFt,
         width_ft: room.widthFt,
