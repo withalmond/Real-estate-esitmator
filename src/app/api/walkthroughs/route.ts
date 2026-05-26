@@ -22,7 +22,9 @@ type IncomingRoom = {
   photos: IncomingPhoto[];
 };
 
-type NormalizedRoom = Omit<IncomingRoom, "photos"> & {
+type NormalizedRoom = {
+  clientId: string;
+  roomType: string;
   lengthFt: number | null;
   widthFt: number | null;
   squareFootage: number | null;
