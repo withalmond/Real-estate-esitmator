@@ -31,6 +31,7 @@ export function PropertyWalkthroughForm() {
   const [propertyAddress, setPropertyAddress] = useState("");
   const [rooms, setRooms] = useState<RoomEntry[]>(() => [createEmptyRoom()]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [savedPropertyId, setSavedPropertyId] = useState("");
@@ -42,11 +43,13 @@ export function PropertyWalkthroughForm() {
   roomsRef.current = rooms;
 
   console.log("PropertyWalkthroughForm saved room state", {
+    isSubmitted,
     savedPropertyId,
     savedRoomIds,
   });
 
   const clearSavedWalkthrough = useCallback(() => {
+    setIsSubmitted(false);
     setSavedPropertyId("");
     setSavedRoomIds({});
     setRoomAnalyses({});
@@ -118,15 +121,21 @@ export function PropertyWalkthroughForm() {
         );
       }
 
-      const newSavedRoomIds = mapSavedRoomIds(data?.rooms ?? []);
-      if (!data?.propertyId || Object.keys(newSavedRoomIds).length === 0) {
-        throw new Error("Unable to read saved room IDs from the server.");
+      console.log("Save successful, updating state now");
+
+      if (!data?.propertyId) {
+        throw new Error("Unable to read saved property ID from the server.");
       }
 
-      setSavedPropertyId(data.propertyId);
+      const newSavedRoomIds = mapSavedRoomIds(data?.rooms ?? []);
+      const newSavedPropertyId = data.propertyId;
+
+      setSavedPropertyId(newSavedPropertyId);
       setSavedRoomIds(newSavedRoomIds);
+      setIsSubmitted(true);
       console.log("PropertyWalkthroughForm save success state values", {
-        savedPropertyId: data.propertyId,
+        isSubmitted: true,
+        savedPropertyId: newSavedPropertyId,
         savedRoomIds: newSavedRoomIds,
       });
       setRoomAnalyses({});
@@ -256,8 +265,8 @@ export function PropertyWalkthroughForm() {
               room={room}
               index={index}
               canRemove={rooms.length > 1}
-              isSaved={!!savedPropertyId}
-              canAnalyze={!!savedPropertyId}
+              isSaved={isSubmitted}
+              canAnalyze={isSubmitted}
               savedPropertyId={savedPropertyId}
               savedRoomIds={savedRoomIds}
               isAnalyzing={roomAnalyses[room.id]?.isLoading ?? false}
