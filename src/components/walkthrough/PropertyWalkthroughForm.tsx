@@ -9,26 +9,63 @@ import {
 } from "react";
 import { createEmptyRoom } from "@/lib/walkthrough/defaults";
 import type { RoomEntry } from "@/lib/walkthrough/types";
-import { RoomSection } from "./RoomSection";
+import { RoomSection, type RoomAnalysisItem } from "./RoomSection";
+
+type WalkthroughSaveResponse = {
+  propertyId?: string;
+  roomIds?: Record<string, string>;
+  error?: string;
+};
+
+type RoomAnalysisState = {
+  isLoading: boolean;
+  items: RoomAnalysisItem[];
+  error: string;
+};
 
 export function PropertyWalkthroughForm() {
   const [propertyAddress, setPropertyAddress] = useState("");
   const [rooms, setRooms] = useState<RoomEntry[]>(() => [createEmptyRoom()]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [savedPropertyId, setSavedPropertyId] = useState("");
+  const [savedRoomIds, setSavedRoomIds] = useState<Record<string, string>>({});
+  const [roomAnalyses, setRoomAnalyses] = useState<
+    Record<string, RoomAnalysisState>
+  >({});
   const roomsRef = useRef(rooms);
   roomsRef.current = rooms;
 
+  console.log("PropertyWalkthroughForm saved room state", {
+    isSaved,
+    savedPropertyId,
+    savedRoomIds,
+  });
+
+  const clearSavedWalkthrough = useCallback(() => {
+    setIsSaved(false);
+    setSavedPropertyId("");
+    setSavedRoomIds({});
+    setRoomAnalyses({});
+  }, []);
+
   const addRoom = () => {
+    clearSavedWalkthrough();
     setRooms((prev) => [...prev, createEmptyRoom()]);
   };
 
-  const updateRoom = useCallback((id: string, room: RoomEntry) => {
-    setRooms((prev) => prev.map((r) => (r.id === id ? room : r)));
-  }, []);
+  const updateRoom = useCallback(
+    (id: string, room: RoomEntry) => {
+      clearSavedWalkthrough();
+      setRooms((prev) => prev.map((r) => (r.id === id ? room : r)));
+    },
+    [clearSavedWalkthrough],
+  );
 
   const removeRoom = (id: string) => {
+    clearSavedWalkthrough();
     setRooms((prev) => {
       const target = prev.find((r) => r.id === id);
       if (target) {
@@ -70,21 +107,35 @@ export function PropertyWalkthroughForm() {
         body: buildSubmissionFormData(propertyAddress, rooms),
       });
       const responseBody = (await response.json().catch(() => null)) as
-        | { error?: string }
+        | WalkthroughSaveResponse
         | null;
+      const data = responseBody;
 
       if (!response.ok) {
         throw new Error(
-          responseBody?.error ?? "Unable to save the property walkthrough.",
+          data?.error ?? "Unable to save the property walkthrough.",
         );
       }
 
-      rooms.forEach((room) => {
-        room.photos.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
+      console.log("Save successful, updating state now");
+
+      if (!data?.propertyId) {
+        throw new Error("Unable to read saved property ID from the server.");
+      }
+
+      if (!data.roomIds) {
+        throw new Error("Unable to read saved room IDs from the server.");
+      }
+
+      setSavedPropertyId(data.propertyId);
+      setSavedRoomIds(data.roomIds);
+      console.log("State updated with:", {
+        propertyId: data.propertyId,
+        roomIds: data.roomIds,
       });
-      setPropertyAddress("");
-      setRooms([createEmptyRoom()]);
-      setStatusMessage("Property walkthrough saved.");
+      setIsSaved(true);
+      setRoomAnalyses({});
+      setStatusMessage("Property walkthrough saved. You can analyze rooms now.");
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -93,6 +144,69 @@ export function PropertyWalkthroughForm() {
       );
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const analyzeRoom = async (clientRoomId: string) => {
+    const roomId = savedRoomIds[clientRoomId];
+    if (!savedPropertyId || !roomId) {
+      setRoomAnalyses((prev) => ({
+        ...prev,
+        [clientRoomId]: {
+          isLoading: false,
+          items: [],
+          error: "Save the property walkthrough before analyzing this room.",
+        },
+      }));
+      return;
+    }
+
+    setRoomAnalyses((prev) => ({
+      ...prev,
+      [clientRoomId]: {
+        isLoading: true,
+        items: prev[clientRoomId]?.items ?? [],
+        error: "",
+      },
+    }));
+
+    try {
+      const response = await fetch("/api/analyze-room", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId, propertyId: savedPropertyId }),
+      });
+      const responseBody = (await response.json().catch(() => null)) as
+        | unknown
+        | null;
+
+      if (!response.ok) {
+        throw new Error(
+          getErrorMessage(responseBody) ?? "Unable to analyze this room.",
+        );
+      }
+
+      const analysisItems = parseAnalysisItems(responseBody);
+      setRoomAnalyses((prev) => ({
+        ...prev,
+        [clientRoomId]: {
+          isLoading: false,
+          items: analysisItems,
+          error: "",
+        },
+      }));
+    } catch (error) {
+      setRoomAnalyses((prev) => ({
+        ...prev,
+        [clientRoomId]: {
+          isLoading: false,
+          items: [],
+          error:
+            error instanceof Error
+              ? error.message
+              : "Unable to analyze this room.",
+        },
+      }));
     }
   };
 
@@ -111,7 +225,10 @@ export function PropertyWalkthroughForm() {
           autoComplete="street-address"
           placeholder="e.g. 742 Evergreen Terrace, Springfield"
           value={propertyAddress}
-          onChange={(e) => setPropertyAddress(e.target.value)}
+          onChange={(e) => {
+            clearSavedWalkthrough();
+            setPropertyAddress(e.target.value);
+          }}
           className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3.5 text-lg text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
           required
         />
@@ -144,8 +261,16 @@ export function PropertyWalkthroughForm() {
               room={room}
               index={index}
               canRemove={rooms.length > 1}
+              isSaved={isSaved}
+              canAnalyze={isSaved}
+              savedPropertyId={savedPropertyId}
+              savedRoomIds={savedRoomIds}
+              isAnalyzing={roomAnalyses[room.id]?.isLoading ?? false}
+              analysisItems={roomAnalyses[room.id]?.items ?? []}
+              analysisError={roomAnalyses[room.id]?.error ?? ""}
               onChange={(updated) => updateRoom(room.id, updated)}
               onRemove={() => removeRoom(room.id)}
+              onAnalyze={() => analyzeRoom(room.id)}
             />
           ))}
         </div>
@@ -180,6 +305,35 @@ export function PropertyWalkthroughForm() {
   );
 }
 
+function parseAnalysisItems(value: unknown) {
+  if (!Array.isArray(value)) {
+    throw new Error("Room analysis response was not a list.");
+  }
+
+  return value.map((item) => {
+    if (!isRecord(item)) {
+      throw new Error("Room analysis response included an invalid item.");
+    }
+
+    const itemName = stringValue(item.item).trim();
+    const quantity = stringValue(item.quantity).trim();
+
+    if (!itemName || !quantity) {
+      throw new Error("Room analysis response included an empty item.");
+    }
+
+    return { item: itemName, quantity };
+  });
+}
+
+function getErrorMessage(value: unknown) {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  return stringValue(value.error).trim() || null;
+}
+
 function buildSubmissionFormData(propertyAddress: string, rooms: RoomEntry[]) {
   const formData = new FormData();
   const roomPayload = rooms.map((room) => {
@@ -208,6 +362,14 @@ function buildSubmissionFormData(propertyAddress: string, rooms: RoomEntry[]) {
   formData.set("rooms", JSON.stringify(roomPayload));
 
   return formData;
+}
+
+function stringValue(value: unknown) {
+  return typeof value === "string" ? value : "";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
 function PlusIcon() {
