@@ -190,6 +190,7 @@ export function RoomSection({
                 Save the walkthrough first, then analyze this room using its uploaded photos.
               </p>
             </div>
+            {logAnalyzeButtonState(room.id, canAnalyze)}
             <button
               type="button"
               onClick={onAnalyze}
@@ -275,6 +276,11 @@ export function RoomSection({
       </div>
     </section>
   );
+}
+
+function logAnalyzeButtonState(roomId: string, canAnalyze: boolean) {
+  console.log("Analyze Room button canAnalyze", { roomId, canAnalyze });
+  return null;
 }
 
 function CameraIcon() {
