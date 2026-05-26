@@ -118,16 +118,16 @@ export function PropertyWalkthroughForm() {
         );
       }
 
-      const roomIds = mapSavedRoomIds(data?.rooms ?? []);
-      if (!data?.propertyId || Object.keys(roomIds).length === 0) {
+      const newSavedRoomIds = mapSavedRoomIds(data?.rooms ?? []);
+      if (!data?.propertyId || Object.keys(newSavedRoomIds).length === 0) {
         throw new Error("Unable to read saved room IDs from the server.");
       }
 
       setSavedPropertyId(data.propertyId);
-      setSavedRoomIds(roomIds);
-      console.log("Save completed; queued saved room state update", {
+      setSavedRoomIds(newSavedRoomIds);
+      console.log("PropertyWalkthroughForm save success state values", {
         savedPropertyId: data.propertyId,
-        savedRoomIds: roomIds,
+        savedRoomIds: newSavedRoomIds,
       });
       setRoomAnalyses({});
       setStatusMessage("Property walkthrough saved. You can analyze rooms now.");
@@ -256,6 +256,7 @@ export function PropertyWalkthroughForm() {
               room={room}
               index={index}
               canRemove={rooms.length > 1}
+              isSaved={!!savedPropertyId}
               canAnalyze={!!savedPropertyId}
               savedPropertyId={savedPropertyId}
               savedRoomIds={savedRoomIds}

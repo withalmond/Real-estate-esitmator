@@ -8,6 +8,7 @@ type RoomSectionProps = {
   room: RoomEntry;
   index: number;
   canRemove: boolean;
+  isSaved: boolean;
   canAnalyze: boolean;
   savedPropertyId: string;
   savedRoomIds: Record<string, string>;
@@ -43,6 +44,7 @@ export function RoomSection({
   room,
   index,
   canRemove,
+  isSaved,
   canAnalyze,
   savedPropertyId,
   savedRoomIds,
@@ -59,6 +61,7 @@ export function RoomSection({
     roomId: room.id,
     savedPropertyId,
     savedRoomIds,
+    isSaved,
     canAnalyze,
   });
 
@@ -201,22 +204,24 @@ export function RoomSection({
                 Save the walkthrough first, then analyze this room using its uploaded photos.
               </p>
             </div>
-            {logAnalyzeButtonState(room.id, canAnalyze)}
-            <button
-              type="button"
-              onClick={onAnalyze}
-              disabled={!canAnalyze || isAnalyzing}
-              className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-blue-300 disabled:active:scale-100"
-            >
-              {isAnalyzing ? "Analyzing..." : "Analyze Room"}
-            </button>
+            {logAnalyzeButtonState(room.id, isSaved, canAnalyze)}
+            {isSaved && (
+              <button
+                type="button"
+                onClick={onAnalyze}
+                disabled={isAnalyzing}
+                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-blue-300 disabled:active:scale-100"
+              >
+                {isAnalyzing ? "Analyzing..." : "Analyze Room"}
+              </button>
+            )}
           </div>
 
           <div aria-live="polite" className="mt-3 text-sm">
             {isAnalyzing && (
               <p className="font-medium text-blue-700">Analyzing room...</p>
             )}
-            {!isAnalyzing && !canAnalyze && (
+            {!isAnalyzing && !isSaved && (
               <p className="text-slate-600">
                 Save the property walkthrough before analyzing this room.
               </p>
@@ -289,8 +294,16 @@ export function RoomSection({
   );
 }
 
-function logAnalyzeButtonState(roomId: string, canAnalyze: boolean) {
-  console.log("Analyze Room button canAnalyze", { roomId, canAnalyze });
+function logAnalyzeButtonState(
+  roomId: string,
+  isSaved: boolean,
+  canAnalyze: boolean,
+) {
+  console.log("Analyze Room button visibility state", {
+    roomId,
+    isSaved,
+    canAnalyze,
+  });
   return null;
 }
 
