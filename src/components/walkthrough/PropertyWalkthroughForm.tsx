@@ -16,6 +16,7 @@ type WalkthroughSaveResponse = {
   rooms?: Array<{
     clientId?: string;
     roomId?: string;
+    returnedRoomId?: string;
   }>;
   error?: string;
 };
@@ -109,20 +110,25 @@ export function PropertyWalkthroughForm() {
       const responseBody = (await response.json().catch(() => null)) as
         | WalkthroughSaveResponse
         | null;
+      const data = responseBody;
 
       if (!response.ok) {
         throw new Error(
-          responseBody?.error ?? "Unable to save the property walkthrough.",
+          data?.error ?? "Unable to save the property walkthrough.",
         );
       }
 
-      const roomIds = mapSavedRoomIds(responseBody?.rooms ?? []);
-      if (!responseBody?.propertyId || Object.keys(roomIds).length === 0) {
+      const roomIds = mapSavedRoomIds(data?.rooms ?? []);
+      if (!data?.propertyId || Object.keys(roomIds).length === 0) {
         throw new Error("Unable to read saved room IDs from the server.");
       }
 
-      setSavedPropertyId(responseBody.propertyId);
+      setSavedPropertyId(data.propertyId);
       setSavedRoomIds(roomIds);
+      console.log("Save completed; queued saved room state update", {
+        savedPropertyId: data.propertyId,
+        savedRoomIds: roomIds,
+      });
       setRoomAnalyses({});
       setStatusMessage("Property walkthrough saved. You can analyze rooms now.");
     } catch (error) {
@@ -250,7 +256,7 @@ export function PropertyWalkthroughForm() {
               room={room}
               index={index}
               canRemove={rooms.length > 1}
-              canAnalyze={Boolean(savedPropertyId && savedRoomIds[room.id])}
+              canAnalyze={!!savedPropertyId}
               savedPropertyId={savedPropertyId}
               savedRoomIds={savedRoomIds}
               isAnalyzing={roomAnalyses[room.id]?.isLoading ?? false}
@@ -295,8 +301,9 @@ export function PropertyWalkthroughForm() {
 
 function mapSavedRoomIds(rooms: NonNullable<WalkthroughSaveResponse["rooms"]>) {
   return rooms.reduce<Record<string, string>>((savedRoomIds, room) => {
-    if (room.clientId && room.roomId) {
-      savedRoomIds[room.clientId] = room.roomId;
+    const returnedRoomId = room.returnedRoomId ?? room.roomId;
+    if (room.clientId && returnedRoomId) {
+      savedRoomIds[room.clientId] = returnedRoomId;
     }
 
     return savedRoomIds;
