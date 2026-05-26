@@ -40,6 +40,11 @@ export function PropertyWalkthroughForm() {
   const roomsRef = useRef(rooms);
   roomsRef.current = rooms;
 
+  console.log("PropertyWalkthroughForm saved room state", {
+    savedPropertyId,
+    savedRoomIds,
+  });
+
   const clearSavedWalkthrough = useCallback(() => {
     setSavedPropertyId("");
     setSavedRoomIds({});
@@ -246,6 +251,8 @@ export function PropertyWalkthroughForm() {
               index={index}
               canRemove={rooms.length > 1}
               canAnalyze={Boolean(savedPropertyId && savedRoomIds[room.id])}
+              savedPropertyId={savedPropertyId}
+              savedRoomIds={savedRoomIds}
               isAnalyzing={roomAnalyses[room.id]?.isLoading ?? false}
               analysisItems={roomAnalyses[room.id]?.items ?? []}
               analysisError={roomAnalyses[room.id]?.error ?? ""}

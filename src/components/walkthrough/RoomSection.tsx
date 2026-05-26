@@ -9,6 +9,8 @@ type RoomSectionProps = {
   index: number;
   canRemove: boolean;
   canAnalyze: boolean;
+  savedPropertyId: string;
+  savedRoomIds: Record<string, string>;
   isAnalyzing: boolean;
   analysisItems: RoomAnalysisItem[];
   analysisError: string;
@@ -42,6 +44,8 @@ export function RoomSection({
   index,
   canRemove,
   canAnalyze,
+  savedPropertyId,
+  savedRoomIds,
   isAnalyzing,
   analysisItems,
   analysisError,
@@ -50,6 +54,13 @@ export function RoomSection({
   onAnalyze,
 }: RoomSectionProps) {
   const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  console.log("RoomSection saved room props", {
+    roomId: room.id,
+    savedPropertyId,
+    savedRoomIds,
+    canAnalyze,
+  });
 
   const update = (patch: Partial<RoomEntry>) => {
     let next = { ...room, ...patch };
